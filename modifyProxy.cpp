@@ -160,8 +160,10 @@ int main(int argc, char *argv[]) {
             printf("Error during fork");
         }
 
-        if (processId == 0) { //if new process then process otherwise
-            close(listen_socket); //only main process is still listening (non blocking)
+        //if new process then process otherwise
+        if (processId == 0) {
+            //only main process is still listening (non blocking)
+            close(listen_socket);
             // while loop to receive client requests
             receiveRequest();
             exit(0);
@@ -225,7 +227,6 @@ void receiveRequest() {
             perror("send(0 call failed\n");
         }
 
-
         //receive http response from server
         receiveData();
     }//while recv() from client
@@ -285,20 +286,20 @@ string modifyWeb(char *input) {
     string inputStr(input);
     string outputStr;
     // Regex expressions
-    regex regflopp("Floppy");
-    regex regfloppUrl("\".*Floppy.*[jpg|png|gif|jpeg]\"");
-    regex regItaly("Italy(?!\\.[j|p|g])");
-    regex regContentLength("Content-Length: \\d*\r\n");
+    const regex regexFloppy("Floppy");
+    const regex regexFloppyUrl("\".*Floppy.*[jpg|png|gif|jpeg]\"");
+    const regex regexItaly("Italy(?!\\.[j|p|g])");
+    const regex regexContentLength("Content-Length: \\d*\r\n");
     //Perform regex replacement on each
-    outputStr = regex_replace(inputStr, regfloppUrl, trollUrl); //Image url
-    outputStr = regex_replace(outputStr, regflopp, trollyStr); //Floppy to Trolly
-    outputStr = regex_replace(outputStr, regItaly, germanyStr); //Italy to Germany
+    outputStr = regex_replace(inputStr, regexFloppyUrl, trollUrl); //Image url
+    outputStr = regex_replace(outputStr, regexFloppy, trollyStr); //Floppy to Trolly
+    outputStr = regex_replace(outputStr, regexItaly, germanyStr); //Italy to Germany
     //Calculate new length
     string content = outputStr.substr(outputStr.find("\r\n\r\n") + 4); //Get packet content from below header
     int contentSize = content.length();
     string newHeader = lengthHeader + to_string(contentSize) + "\r\n";
     printf("%s\n", newHeader.c_str());
-    outputStr = regex_replace(outputStr, regContentLength, newHeader);
+    outputStr = regex_replace(outputStr, regexContentLength, newHeader);
 
     return outputStr;
 }
