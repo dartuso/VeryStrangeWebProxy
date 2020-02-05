@@ -55,12 +55,6 @@
 /* string sizes */
 #define MESSAGE_SIZE 2048
 
-static const std::string trollUrl = "\"http://pages.cpsc.ucalgary.ca/~carey/CPSC441/trollface.jpg\"";
-//const std::string otherTroll = R"("./trollface.jpg")";
-//const std::string japanStr = "Japan";
-static const std::string germanyStr = "Germany";
-static const std::string trollyStr = "Trolly";
-static const std::string lengthHeader = "Content-Length: ";
 
 //socket descriptors (global for use in cleanExit)
 int listen_socket, data_socket, web_socket;
@@ -281,6 +275,13 @@ void cleanExit(int signal) {
 }
 
 string modifyWeb(char *input) {
+    static const std::string trollUrl = "\"http://pages.cpsc.ucalgary.ca/~carey/CPSC441/trollface.jpg\"";
+//const std::string otherTroll = R"("./trollface.jpg")";
+//const std::string japanStr = "Japan";
+    static const std::string germanyStr = "Germany";
+    static const std::string trollyStr = "Trolly";
+    static const std::string lengthHeader = "Content-Length: ";
+
     string inputStr(input);
     string outputStr;
     // Regex expressions
