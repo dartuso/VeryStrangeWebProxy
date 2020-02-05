@@ -55,6 +55,13 @@
 /* string sizes */
 #define MESSAGE_SIZE 2048
 
+static const std::string trollUrl = "\"http://pages.cpsc.ucalgary.ca/~carey/CPSC441/trollface.jpg\"";
+//const std::string otherTroll = R"("./trollface.jpg")";
+//const std::string japanStr = "Japan";
+static const std::string germanyStr = "Germany";
+static const std::string trollyStr = "Trolly";
+static const std::string lengthHeader = "Content-Length: ";
+
 //socket descriptors (global for use in cleanExit)
 int listen_socket, data_socket, web_socket;
 
@@ -93,7 +100,6 @@ void receiveData();
 
 int main(int argc, char *argv[]) {
     int proxyPort = DEFAULT_PORT, processId;
-    regex regText("Content-Type: text");
 
     findMyIP();
 
@@ -234,19 +240,21 @@ void receiveRequest() {
 void receiveData() {
     char server_response[10 * MESSAGE_SIZE], client_response[10 * MESSAGE_SIZE];
     int serverBytes;
+    regex regText("Content-Type: text");
+
     while ((serverBytes = recv(web_socket, server_response, MESSAGE_SIZE, 0)) > 0) {
 
         bcopy(server_response, client_response, serverBytes);
 
         //Detect if modifiable or regular
         if (regex_search(client_response, regText)) {
-            printf("%s\n", server_response);
+//            printf("%s\n", server_response);
             printf("Recieved: %d\n", serverBytes);
 
             string modified_response = modifyWeb(client_response);
             printf("Printing modified...\n");
 
-            printf("%s\n", modified_response.c_str());
+//            printf("%s\n", modified_response.c_str());
 
             //send http response to client
             int sent = send(data_socket, modified_response.c_str(), modified_response.length(), 0);
@@ -273,13 +281,6 @@ void cleanExit(int signal) {
 }
 
 string modifyWeb(char *input) {
-    const string trollUrl = "\"http://pages.cpsc.ucalgary.ca/~carey/CPSC441/trollface.jpg\"";
-    const string otherTroll = R"("./trollface.jpg")";
-    const string japanStr = "Japan";
-    const string germanyStr = "Germany";
-    const string trollyStr = "Trolly";
-    const string lengthHeader = "Content-Length: ";
-
     string inputStr(input);
     string outputStr;
     // Regex expressions
