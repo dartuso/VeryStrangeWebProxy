@@ -1,0 +1,3 @@
+/mnt/c/Users/dasa9/OneDrive - University of Calgary/Current Classes/CPSC 441/441ASG1/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/mnt/c/Users/dasa9/OneDrive - University of Calgary/Current Classes/CPSC 441/441ASG1/cmake-build-debug/CMakeFiles/proxy.dir
+/mnt/c/Users/dasa9/OneDrive - University of Calgary/Current Classes/CPSC 441/441ASG1/cmake-build-debug/CMakeFiles/edit_cache.dir

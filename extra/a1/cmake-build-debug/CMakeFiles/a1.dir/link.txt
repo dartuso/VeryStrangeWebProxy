@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/a1.dir/proxy.c.o CMakeFiles/a1.dir/proxy_parse.c.o  -o a1 

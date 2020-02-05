@@ -1,0 +1,360 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+<link href="CPSC%20441%20%20Assignment%201_files/cpsc441.css" rel="stylesheet" type="text/css">
+
+<title>CPSC 441: Assignment 1</title>
+
+</head><body><table width="80%">
+<tbody><tr>
+  <td align="center"><h1>CPSC 441: Computer Networks</h1></td>
+</tr>
+<tr><td align="center"><h3>Professor Carey Williamson</h3></td></tr>
+<tr><td align="center"><h3>Winter 2020</h3></td></tr>
+</tbody></table>
+
+<div class="container">
+
+<div class="leftside">
+
+<ul>
+<li><a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/index.html">CPSC 441 Home</a></li>
+<li><a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/slides.html">Course Content</a></li>
+<li><a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/textbook.html">Textbook</a></li>
+<li><a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/instructor.html">Instructor</a></li>
+<li><a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/tutorials.html">Tutorials</a></li>
+<li><a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/assignments.html">Assignments</a></li>
+<li><a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/exams.html">Exams</a></li>
+<li><a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/grading.html">Grading</a></li>
+<li><a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/links.html">Useful Links</a></li>
+</ul>
+
+</div>
+
+<div class="content">
+
+<h1>Assignment 1: Fake News Proxy (40 marks)</h1>
+
+Due: <b>Friday, February 7, 2020</b> (11:30pm)
+
+<h2>Learning Objectives</h2>
+
+<p>
+The purpose of this assignment is to learn about
+the HyperText Transfer Protocol (HTTP) used by the World Wide Web.
+In particular, you will design and implement an HTTP proxy (i.e., Web proxy)
+with functionality that demonstrates both the simplicity and the power of HTTP
+as an application-layer protocol.
+Along the way, you will also learn a lot about
+socket programming, TCP/IP, network debugging, and more.
+</p>
+
+<h2>Preamble</h2>
+
+<p>
+The so-called "Fake News" phenomenon is rampant on the Internet,
+but it seems unfair to let Donald Trump have all the fun,
+so let's make some fake news of our own!
+We are going to make a Web proxy that alters certain content
+on simple Web pages before they are rendered by the Web browser,
+so that the user sees factually incorrect information without knowing it.
+To keep the assignment simple, we will restrict ourselves only to HTTP
+(not HTTPS), and consider only basic text and HTML pages with a few images.
+</p>
+
+<p>
+For our purpose, the fake news will involve my friend
+<a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/Cute-Floppy.jpg"> Floppy</a>
+from Italy.
+Specifically, you need to change all occurrences of "Floppy" on a Web page
+into "Trolly", and  all occurrences of "Italy" into "Japan".
+And if you find any JPG images of Floppy (linked or embedded),
+then you should replace them with your favourite
+<a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/trollface.jpg"> troll</a>
+image file (JPG, GIF, or PNG) from the Internet. Woot!!
+</p>
+
+<h2>Background</h2>
+
+<p>
+A <b>Web proxy</b> is a piece of software that functions as an
+intermediary between a Web client (browser) and a Web server.
+The Web proxy intercepts Web requests from clients and reformulates
+the requests for transmission to a Web server. When a
+response is received from the Web server, the proxy sends the 
+response back to the client.
+From the server's point of view, the proxy <b>is</b> the client,
+since that is where the request comes from.
+Similarly, from the client's point of view, the proxy <b>is</b> the server,
+since that is where the response comes from.
+A Web proxy thus provides a single point of control to regulate 
+Internet access between clients and servers. 
+A lot of Calgary schools use Web proxies to limit the types of
+Web sites that students are allowed to access.
+<a href="http://www.netnanny.com/"> Net Nanny</a> and
+<a href="http://www.barracuda.com/"> Barracuda</a>
+are examples of commercially available Web proxies.
+</p>
+
+<h2>Technical Requirements</h2>
+
+<p>
+In this assignment, you will implement your very own <b>Web proxy</b>,
+in either C or C++.
+The goals of the assignment are to build a properly functioning
+Web proxy for simple Web pages, and then use your proxy
+to change some of the content before it is delivered to the browser.
+</p>
+
+<p>
+There are two main pieces of functionality needed in your proxy.
+The first is the ability to intercept (and parse) HTTP requests and responses,
+so that the proxy can determine what changes (if any) need to be made to the
+requested content.
+The second is the ability to insert the false information into the
+page in some appropriate way so that the page still renders properly.
+Think of the fun you can have by trolling your unsuspecting roommate
+with fake news via your proxy. Hahahahaha!!!
+</p>
+
+<p>
+The most important HTTP command for your Web proxy to handle
+is the "GET" request, which specifies the URL for an object
+to be retrieved. In the basic operation of your proxy, it
+should be able to parse, understand, and forward to the Web
+server a (possibly modified) version of the client HTTP request.
+Similarly, the proxy should be able to parse, understand, 
+and return to the client a (possibly modified) version
+of the HTTP response that the Web server provided to the proxy.
+Please give some careful thought to how your proxy handles
+commonly occurring HTTP response codes, such as
+200 (OK),
+206 (Partial Content),
+301 (Moved Permanently),
+302 (Found),
+304 (Not Modified),
+403 (Forbidden),
+and
+404 (Not Found).
+</p>
+
+<p>
+You will need at least one TCP socket (i.e., SOCK_STREAM) for client-proxy
+communication, and at least one additional TCP socket for each Web server
+you are talking to for proxy-server communication.
+(If you want your proxy to support
+multiple concurrent HTTP transactions, you will
+need to fork child processes for request handling as well.
+See optional bonus part below.)
+Each child process or thread will use its own socket instances for its
+communications with the client and with the server.
+</p>
+
+<p>
+When implementing your proxy, feel free to
+compile and run your Web proxy on any suitable department machine,
+or even your home machine or laptop, but please be aware that you
+will ultimately have to demo your proxy to your TA on campus at some point.
+You should try to access your proxy from your favourite Web browser
+(e.g., Internet Explorer, Mozilla Firefox, Chrome, Safari),
+and computer (either on campus or at home).
+To test the proxy, you will have to
+configure your Web browser to use your specific Web proxy
+(e.g., look for menu selections like Tools, Internet Options, Proxies, Advanced, LAN Settings).
+</p>
+
+<p>
+As you design and build your Web proxy, give careful consideration
+to how you will debug and test it. For example, you may want to
+print out
+information about requests and responses received, processed, forwarded,
+redirected, or altered.
+Once you become confident with the basic operation of your Web proxy,
+you can toggle off the verbose debugging output.
+If you are testing on your home network, you can also use tools
+like 
+<a href="http://en.wikipedia.org/wiki/Wireshark"> WireShark</a>
+or
+<a href="http://www.tcpdump.org/"> tcpdump</a>
+to collect network packet traces.
+By studying the HTTP messages and TCP/IP packets going to and from your proxy,
+you might be able to figure out what is working, what isn't working, and why.
+</p>
+
+<p>
+When you are finished,
+please submit your solution in electronic form to your TA via D2L.
+Your submission should include the source code for your Web proxy,
+a brief user manual describing how to compile and use your proxy,
+and a description of the testing done with your proxy.
+Please remember that assignments are to be done individually,
+and submitted to your assigned TA on time.
+You should also plan to give a brief demo of your proxy to your TA in February,
+either just before or just after your submission.
+</p>
+
+<h2>Testing</h2>
+
+<p>
+Your proxy will be tested on the following six test cases:
+</p>
+<ol>
+<li>
+<a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/testpage0.txt"> simple ASCII text file</a>
+</li>
+<li>
+<a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/testpage0.html"> simple HTML test page</a>
+</li>
+<li>
+<a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/testpage01.html"> HTML test page with link to photo</a>
+</li>
+<li>
+<a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/testpage1.html"> HTML test page with 1 embedded photo</a>
+</li>
+<li>
+<a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/testpage2.html"> HTML test page with 2 embedded photos</a>
+</li>
+<li>
+<a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/testpage3.html"> HTML test page with 3 embedded photos</a>.
+</li>
+</ol>
+
+<p>
+Once you have these cases working, you can try your proxy on other pages,
+such as the Wikipedia pages for
+<a href="http://en.wikipedia.org/wiki/Italy"> Italy</a>
+and
+<a href="http://en.wikipedia.org/wiki/Floppy_disk"> Floppy Disks</a>,
+to see what happens. 
+Good luck, and have fun!
+</p>
+
+<h2>Grading Rubric</h2>
+
+<p>
+The grading scheme for the assignment is as follows:
+</p>
+<ul>
+<li>
+<b>16 marks</b>
+for the
+design and implementation of a functional Web proxy that
+can handle simple HTTP GET interactions between client and server,
+using either HTTP/1.0 or HTTP/1.1.  This basic proxy should be
+able to deliver Web pages in unaltered form, and be able to
+handle HTTP redirection when it occurs. 
+Your implementation should include 
+proper use of TCP/IP socket programming in C or C++,
+and reasonably commented code.
+</li>
+<li>
+<b>10 marks</b>
+for that part of your Web proxy that can parse HTTP requests and responses,
+identify when text, HTML, and JPG files are being requested, and make proper
+decisions about content alteration.
+</li>
+<li>
+<b>4 marks</b>
+for a
+clear and concise user manual (at most 1 page)
+that describes how to compile, configure, and
+use your Web proxy.
+Make sure to indicate the required features 
+and optional features (if any) that the proxy supports.
+Make sure to clarify where and how the testing was done
+(e.g., home, university, office), what works, and what does not. Be honest!
+</li>
+<li>
+<b>10 marks</b>
+for a suitable demonstration of your proxy
+to your TA in your tutorial section, or to your professor at a mutually 
+convenient time. A successful demo will include marks for the test cases
+ above,
+as well as clear answers to questions asked during your code 
+walk-through.
+</li>
+</ul>
+
+<h2>Bonus (optional)</h2>
+
+<p>
+Up to <b>2 bonus marks</b> will be
+given for proper design of a non-blocking
+(i.e., multi-threaded or multi-process) proxy
+that can handle complicated Web sites with ease.
+Make sure to show this during the demo.
+</p>
+<p>
+Up to <b>2 bonus marks</b> will be
+given for a version of the proxy that can change each
+occurrence of "Italy" into "Germany".
+</p>
+
+<h2>Tips</h2>
+
+<ul>
+<li>
+This is a <b>very challenging</b> assignment, so please <b>get started early</b>.
+You will likely need 7-14 days of thinking/coding/debugging time to
+get it fully working.
+</li>
+<li>
+If you have never done socket programming in C/C++ before, you should
+make sure to get to your CPSC 441 tutorials on this topic. Don't miss them!
+</li>
+<li>
+If you don't speak HTTP already,
+make sure to get to your CPSC 441 tutorial on this topic.
+For example,
+the "Content-Type" header is a good way to determine the type of a Web object,
+and the "Content-Length" header will tell you how big it is (in bytes).
+</li>
+<li>
+Focus on the basic HTTP proxy functionality first,
+by simply forwarding everything that you receive from the client
+directly to the server, and everything you receive from the server
+directly back to the client. Then add more functionality,
+such as text parsing, content alteration, request alteration,
+and/or HTTP redirection.
+</li>
+<li>
+Your proxy will need one socket for talking to the client,
+and another socket for talking to the server. Make sure to keep track
+of which one is which. This is very important to understand!
+</li>
+<li>
+Your proxy will likely
+need to dynamically create a socket for every new server that it talks to.
+Most of the examples above involve only one server, which is easier.
+But you will likely need to generalize this to multiple servers.
+If so, make sure to manage these sockets properly.
+</li>
+<li>
+Start with <b>very simple</b> Web pages, such as those indicated above.
+Once you have these working, then you can try more complicated Web pages
+with lots of embedded objects, possibly from multiple servers.
+</li>
+<li>
+You may find that network firewalls block certain ports, which may make
+configuration and use of your proxy tricky. For example, I found it easier to do
+all of my testing using machines within the CPSC network, rather than external ones.
+A good Wireshark trace can help show you what is actually happening on the network.
+</li>
+<li>
+Try to avoid servers that automatically redirect HTTP to HTTPS,
+since TLS handshakes and encrypted content are well beyond the
+intended scope of the assignment.
+Let's keep things simple with HTTP only.
+</li>
+<li>
+Here is a generic
+<a href="http://pages.cpsc.ucalgary.ca/~carey/CPSC441/checklist.txt"> debugging checklist</a>
+that you might find helpful.
+</li>
+</ul>
+
+</div>
+
+</div>
+
+
+</body></html>
