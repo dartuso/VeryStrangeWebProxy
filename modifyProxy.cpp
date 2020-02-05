@@ -87,12 +87,12 @@ string modifyWeb(char *input);
  */
 void findMyIP();
 
+void receiveData();
+
 int main(int argc, char *argv[]) {
-    char client_request[MESSAGE_SIZE], server_request[MESSAGE_SIZE],
-            server_response[10 * MESSAGE_SIZE], client_response[10 * MESSAGE_SIZE];
+    char client_request[MESSAGE_SIZE], server_request[MESSAGE_SIZE];
     char url[MESSAGE_SIZE], host[MESSAGE_SIZE], path[MESSAGE_SIZE];
-    int serverBytes, i, proxyPort = DEFAULT_PORT, processId;
-    regex regText("Content-Type: text");
+    int i, proxyPort = DEFAULT_PORT, processId;
 
     findMyIP();
 
@@ -214,41 +214,49 @@ int main(int argc, char *argv[]) {
 
 
                 //receive http response from server
-                while ((serverBytes = recv(web_socket, server_response, MESSAGE_SIZE, 0)) > 0) {
-
-                    bcopy(server_response, client_response, serverBytes);
-
-                    //Detect if modifiable or regular
-                    if (regex_search(client_response, regText)) {
-                        printf("%s\n", server_response);
-                        printf("Recieved: %d\n", serverBytes);
-
-                        string modified_response = modifyWeb(client_response);
-                        printf("Printing modified...\n");
-
-                        printf("%s\n", modified_response.c_str());
-
-                        //send http response to client
-                        int sent = send(data_socket, modified_response.c_str(), modified_response.length(), 0);
-                        if (sent < 0) {
-                            perror("send() call failed...\n");
-                        }
-                        modified_response.clear();
-                        printf("Sent: %d\n", sent);
-                    } else {
-                        if (send(data_socket, client_response, serverBytes, 0) < 0) {
-                            perror("send() call failed...\n");
-                        }
-                    }
-                    bzero(client_response, MESSAGE_SIZE * 10);
-                    bzero(server_response, MESSAGE_SIZE * 10);
-                }//while recv() from server
+                receiveData();
             }//while recv() from client
             exit(0);
         } else {
             close(data_socket);
         }
     }
+}
+
+void receiveData() {
+    char server_response[10 * MESSAGE_SIZE], client_response[10 * MESSAGE_SIZE];
+    int serverBytes;
+    regex regText("Content-Type: text");
+
+    while ((serverBytes = recv(web_socket, server_response, MESSAGE_SIZE, 0)) > 0) {
+
+        bcopy(server_response, client_response, serverBytes);
+
+        //Detect if modifiable or regular
+        if (regex_search(client_response, regText)) {
+            printf("%s\n", server_response);
+            printf("Recieved: %d\n", serverBytes);
+
+            string modified_response = modifyWeb(client_response);
+            printf("Printing modified...\n");
+
+            printf("%s\n", modified_response.c_str());
+
+            //send http response to client
+            int sent = send(data_socket, modified_response.c_str(), modified_response.length(), 0);
+            if (sent < 0) {
+                perror("send() call failed...\n");
+            }
+            modified_response.clear();
+            printf("Sent: %d\n", sent);
+        } else {
+            if (send(data_socket, client_response, serverBytes, 0) < 0) {
+                perror("send() call failed...\n");
+            }
+        }
+        bzero(client_response, MESSAGE_SIZE * 10);
+        bzero(server_response, MESSAGE_SIZE * 10);
+    }//while recv() from server
 }
 
 void cleanExit(int signal) {
