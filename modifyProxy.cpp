@@ -89,10 +89,10 @@ void findMyIP();
 
 void receiveData();
 
+void receiveRequest();
+
 int main(int argc, char *argv[]) {
-    char client_request[MESSAGE_SIZE], server_request[MESSAGE_SIZE];
-    char url[MESSAGE_SIZE], host[MESSAGE_SIZE], path[MESSAGE_SIZE];
-    int i, proxyPort = DEFAULT_PORT, processId;
+    int proxyPort = DEFAULT_PORT;
 
     findMyIP();
 
@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
         }
 
         //Forking
-        processId = fork();
+        pid_t processId = fork();
         if (processId < 0) {
             printf("Error during fork");
         }
@@ -162,64 +162,71 @@ int main(int argc, char *argv[]) {
         if (processId == 0) { //if new process then process otherwise
             close(listen_socket); //only main process is still listening (non blocking)
             // while loop to receive client requests
-            while (recv(data_socket, client_request, MESSAGE_SIZE, 0) > 0) {
-                printf("%s\n", client_request);
-
-                //copy to server_request to preserve contents (client_request will be damaged in strtok())
-                strcpy(server_request, client_request);
-
-                //tokenize to get a line at a time
-                char *line = strtok(client_request, "\r\n");
-
-                //extract url
-                sscanf(line, "GET http://%s", url);
-
-                //separate host from path
-                for (i = 0; i < strlen(url); i++) {
-                    if (url[i] == '/') {
-                        strncpy(host, url, i);
-                        host[i] = '\0';
-                        break;
-                    }
-                }
-                bzero(path, MESSAGE_SIZE);
-                strcat(path, &url[i]);
-
-                //initialize server address
-                printf("Initializing server address...\n");
-                struct sockaddr_in server_addr{};
-                struct hostent *server;
-                server = gethostbyname(host);
-
-                bzero((char *) &server_addr, sizeof(struct sockaddr_in));
-                server_addr.sin_family = AF_INET;
-                server_addr.sin_port = htons(HTTP_PORT);
-                bcopy((char *) server->h_addr, (char *) &server_addr.sin_addr.s_addr, server->h_length);
-
-                //create web_socket to communicate with web_server
-                web_socket = socket(AF_INET, SOCK_STREAM, 0);
-                if (web_socket < 0) {
-                    perror("socket() call failed\n");
-                }
-
-                //send connection request to web server
-                if (connect(web_socket, (struct sockaddr *) &server_addr, sizeof(struct sockaddr_in)) < 0) {
-                    perror("connect() call failed\n");
-                }
-
-                //send http request to web server
-                if (send(web_socket, server_request, MESSAGE_SIZE, 0) < 0) {
-                    perror("send(0 call failed\n");
-                }
-
-
-                //receive http response from server
-                receiveData();
-            }//while recv() from client
+            receiveRequest();
             exit(0);
         } else {
             close(data_socket);
         }
+    }
+}
+
+void receiveRequest() {
+    char client_request[MESSAGE_SIZE], server_request[MESSAGE_SIZE];
+    char url[MESSAGE_SIZE], host[MESSAGE_SIZE], path[MESSAGE_SIZE];
+    int i;
+    while (recv(data_socket, client_request, MESSAGE_SIZE, 0) > 0) {
+        printf("%s\n", client_request);
+
+        //copy to server_request to preserve contents (client_request will be damaged in strtok())
+        strcpy(server_request, client_request);
+
+        //tokenize to get a line at a time
+        char *line = strtok(client_request, "\r\n");
+
+        //extract url
+        sscanf(line, "GET http://%s", url);
+
+        //separate host from path
+        for (i = 0; i < strlen(url); i++) {
+            if (url[i] == '/') {
+                strncpy(host, url, i);
+                host[i] = '\0';
+                break;
+            }
+        }
+        bzero(path, MESSAGE_SIZE);
+        strcat(path, &url[i]);
+
+        //initialize server address
+        printf("Initializing server address...\n");
+        struct sockaddr_in server_addr{};
+        struct hostent *server;
+        server = gethostbyname(host);
+
+        bzero((char *) &server_addr, sizeof(struct sockaddr_in));
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_port = htons(HTTP_PORT);
+        bcopy((char *) server->h_addr, (char *) &server_addr.sin_addr.s_addr, server->h_length);
+
+        //create web_socket to communicate with web_server
+        web_socket = socket(AF_INET, SOCK_STREAM, 0);
+        if (web_socket < 0) {
+            perror("socket() call failed\n");
+        }
+
+        //send connection request to web server
+        if (connect(web_socket, (struct sockaddr *) &server_addr, sizeof(struct sockaddr_in)) < 0) {
+            perror("connect() call failed\n");
+        }
+
+        //send http request to web server
+        if (send(web_socket, server_request, MESSAGE_SIZE, 0) < 0) {
+            perror("send(0 call failed\n");
+        }
+
+
+        //receive http response from server
+        receiveData();
     }
 }
 
