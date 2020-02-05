@@ -61,12 +61,24 @@ int listen_socket, data_socket, web_socket;
 using namespace std;
 
 //Functions
+
+
 /*
- * cleanExit
- * Function for exiting with ports closed
- * Pass signal for program to return with
+ * receiveRequest
+ *
+ * Once accept is processing this function receives (recv) the request to the web
+ * Then it attempts to connect to the web if successful passes the web data to receiveData
  */
-void cleanExit(int signal);
+void receiveRequest();
+
+/*
+ * receiveData
+ *
+ * Recieve the data from the web then checks if the pages is text
+ * if it is then passes the content to modifyWeb
+ * if not just send back to client
+ */
+void receiveData();
 
 /*
  * modifyWeb
@@ -80,16 +92,21 @@ void cleanExit(int signal);
  */
 string modifyWeb(char *input);
 
+
+/*
+ * cleanExit
+ * Function for exiting with ports closed
+ * Pass signal for program to return with
+ */
+void cleanExit(int signal);
+
+
 /*
  * find my IP
  * Utility to list ip to make it easier for client to find it to connect.
  * Source courtesy of: https://stackoverflow.com/questions/212528/get-the-ip-address-of-the-machine
  */
 void findMyIP();
-
-void receiveData();
-
-void receiveRequest();
 
 int main(int argc, char *argv[]) {
     int proxyPort = DEFAULT_PORT;
@@ -119,7 +136,6 @@ int main(int argc, char *argv[]) {
     proxy_addr.sin_family = AF_INET;
     proxy_addr.sin_port = htons(proxyPort);
     proxy_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-
     //create listening socket
     printf("Creating listen_socket...\n");
     listen_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -127,14 +143,12 @@ int main(int argc, char *argv[]) {
         perror("socket() call failed");
         exit(-1);
     }
-
     //bind listening socket
     printf("Binding listen_socket...\n");
     if (bind(listen_socket, (struct sockaddr *) &proxy_addr, sizeof(struct sockaddr_in)) < 0) {
         perror("bind() call failed");
         exit(-1);
     }
-
     //listen for client connection requests
     printf("Listening on listen_socket...\n");
     if (listen(listen_socket, 20) < 0) {
@@ -152,13 +166,11 @@ int main(int argc, char *argv[]) {
             perror("accept() call failed\n");
             exit(-1);
         }
-
         //Forking
         pid_t processId = fork();
         if (processId < 0) {
             printf("Error during fork");
         }
-
         if (processId == 0) { //if new process then process otherwise
             close(listen_socket); //only main process is still listening (non blocking)
             // while loop to receive client requests
@@ -223,8 +235,6 @@ void receiveRequest() {
         if (send(web_socket, server_request, MESSAGE_SIZE, 0) < 0) {
             perror("send(0 call failed\n");
         }
-
-
         //receive http response from server
         receiveData();
     }
@@ -233,7 +243,7 @@ void receiveRequest() {
 void receiveData() {
     char server_response[10 * MESSAGE_SIZE], client_response[10 * MESSAGE_SIZE];
     int serverBytes;
-    regex regText("Content-Type: text");
+    static const regex regText("Content-Type: text");
 
     while ((serverBytes = recv(web_socket, server_response, MESSAGE_SIZE, 0)) > 0) {
 
