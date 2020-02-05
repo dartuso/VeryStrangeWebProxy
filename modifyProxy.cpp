@@ -87,11 +87,12 @@ string modifyWeb(char *input);
  */
 void findMyIP();
 
+void receiveRequest();
+
+void receiveData();
+
 int main(int argc, char *argv[]) {
-    char client_request[MESSAGE_SIZE], server_request[MESSAGE_SIZE],
-            server_response[10 * MESSAGE_SIZE], client_response[10 * MESSAGE_SIZE];
-    char url[MESSAGE_SIZE], host[MESSAGE_SIZE], path[MESSAGE_SIZE];
-    int serverBytes, i, proxyPort = DEFAULT_PORT, processId;
+    int proxyPort = DEFAULT_PORT, processId;
     regex regText("Content-Type: text");
 
     findMyIP();
@@ -162,93 +163,106 @@ int main(int argc, char *argv[]) {
         if (processId == 0) { //if new process then process otherwise
             close(listen_socket); //only main process is still listening (non blocking)
             // while loop to receive client requests
-            while (recv(data_socket, client_request, MESSAGE_SIZE, 0) > 0) {
-                printf("%s\n", client_request);
-
-                //copy to server_request to preserve contents (client_request will be damaged in strtok())
-                strcpy(server_request, client_request);
-
-                //tokenize to get a line at a time
-                char *line = strtok(client_request, "\r\n");
-
-                //extract url
-                sscanf(line, "GET http://%s", url);
-
-                //separate host from path
-                for (i = 0; i < strlen(url); i++) {
-                    if (url[i] == '/') {
-                        strncpy(host, url, i);
-                        host[i] = '\0';
-                        break;
-                    }
-                }
-                bzero(path, MESSAGE_SIZE);
-                strcat(path, &url[i]);
-
-                //initialize server address
-                printf("Initializing server address...\n");
-                struct sockaddr_in server_addr{};
-                struct hostent *server;
-                server = gethostbyname(host);
-
-                bzero((char *) &server_addr, sizeof(struct sockaddr_in));
-                server_addr.sin_family = AF_INET;
-                server_addr.sin_port = htons(HTTP_PORT);
-                bcopy((char *) server->h_addr, (char *) &server_addr.sin_addr.s_addr, server->h_length);
-
-                //create web_socket to communicate with web_server
-                web_socket = socket(AF_INET, SOCK_STREAM, 0);
-                if (web_socket < 0) {
-                    perror("socket() call failed\n");
-                }
-
-                //send connection request to web server
-                if (connect(web_socket, (struct sockaddr *) &server_addr, sizeof(struct sockaddr_in)) < 0) {
-                    perror("connect() call failed\n");
-                }
-
-                //send http request to web server
-                if (send(web_socket, server_request, MESSAGE_SIZE, 0) < 0) {
-                    perror("send(0 call failed\n");
-                }
-
-
-                //receive http response from server
-                while ((serverBytes = recv(web_socket, server_response, MESSAGE_SIZE, 0)) > 0) {
-
-                    bcopy(server_response, client_response, serverBytes);
-
-                    //Detect if modifiable or regular
-                    if (regex_search(client_response, regText)) {
-                        printf("%s\n", server_response);
-                        printf("Recieved: %d\n", serverBytes);
-
-                        string modified_response = modifyWeb(client_response);
-                        printf("Printing modified...\n");
-
-                        printf("%s\n", modified_response.c_str());
-
-                        //send http response to client
-                        int sent = send(data_socket, modified_response.c_str(), modified_response.length(), 0);
-                        if (sent < 0) {
-                            perror("send() call failed...\n");
-                        }
-                        modified_response.clear();
-                        printf("Sent: %d\n", sent);
-                    } else {
-                        if (send(data_socket, client_response, serverBytes, 0) < 0) {
-                            perror("send() call failed...\n");
-                        }
-                    }
-                    bzero(client_response, MESSAGE_SIZE * 10);
-                    bzero(server_response, MESSAGE_SIZE * 10);
-                }//while recv() from server
-            }//while recv() from client
+            receiveRequest();
             exit(0);
         } else {
             close(data_socket);
         }
     }
+}
+
+void receiveRequest() {
+    char client_request[MESSAGE_SIZE], server_request[MESSAGE_SIZE], url[MESSAGE_SIZE];
+    char host[MESSAGE_SIZE], path[MESSAGE_SIZE];
+    int i;
+    while (recv(data_socket, client_request, MESSAGE_SIZE, 0) > 0) {
+        printf("%s\n", client_request);
+
+        //copy to server_request to preserve contents (client_request will be damaged in strtok())
+        strcpy(server_request, client_request);
+
+        //tokenize to get a line at a time
+        char *line = strtok(client_request, "\r\n");
+
+        //extract url
+        sscanf(line, "GET http://%s", url);
+
+        //separate host from path
+        for (i = 0; i < strlen(url); i++) {
+            if (url[i] == '/') {
+                strncpy(host, url, i);
+                host[i] = '\0';
+                break;
+            }
+        }
+        bzero(path, MESSAGE_SIZE);
+        strcat(path, &url[i]);
+
+        //initialize server address
+        printf("Initializing server address...\n");
+        struct sockaddr_in server_addr{};
+        struct hostent *server;
+        server = gethostbyname(host);
+
+        bzero((char *) &server_addr, sizeof(struct sockaddr_in));
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_port = htons(HTTP_PORT);
+        bcopy((char *) server->h_addr, (char *) &server_addr.sin_addr.s_addr, server->h_length);
+
+        //create web_socket to communicate with web_server
+        web_socket = socket(AF_INET, SOCK_STREAM, 0);
+        if (web_socket < 0) {
+            perror("socket() call failed\n");
+        }
+
+        //send connection request to web server
+        if (connect(web_socket, (struct sockaddr *) &server_addr, sizeof(struct sockaddr_in)) < 0) {
+            perror("connect() call failed\n");
+        }
+
+        //send http request to web server
+        if (send(web_socket, server_request, MESSAGE_SIZE, 0) < 0) {
+            perror("send(0 call failed\n");
+        }
+
+
+        //receive http response from server
+        receiveData();
+    }//while recv() from client
+}
+
+void receiveData() {
+    char server_response[10 * MESSAGE_SIZE], client_response[10 * MESSAGE_SIZE];
+    int serverBytes;
+    while ((serverBytes = recv(web_socket, server_response, MESSAGE_SIZE, 0)) > 0) {
+
+        bcopy(server_response, client_response, serverBytes);
+
+        //Detect if modifiable or regular
+        if (regex_search(client_response, regText)) {
+            printf("%s\n", server_response);
+            printf("Recieved: %d\n", serverBytes);
+
+            string modified_response = modifyWeb(client_response);
+            printf("Printing modified...\n");
+
+            printf("%s\n", modified_response.c_str());
+
+            //send http response to client
+            int sent = send(data_socket, modified_response.c_str(), modified_response.length(), 0);
+            if (sent < 0) {
+                perror("send() call failed...\n");
+            }
+            modified_response.clear();
+            printf("Sent: %d\n", sent);
+        } else {
+            if (send(data_socket, client_response, serverBytes, 0) < 0) {
+                perror("send() call failed...\n");
+            }
+        }
+        bzero(client_response, MESSAGE_SIZE * 10);
+        bzero(server_response, MESSAGE_SIZE * 10);
+    }//while recv() from server
 }
 
 void cleanExit(int signal) {
